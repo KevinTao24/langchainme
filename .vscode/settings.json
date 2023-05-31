@@ -4,9 +4,11 @@
         "davinci",
         "idxs",
         "langchainme",
+        "linalg",
         "llms",
         "logit",
         "openai",
-        "pydantic"
+        "pydantic",
+        "tiktoken"
     ]
 }
