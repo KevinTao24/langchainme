@@ -1,11 +1,21 @@
-"""公共Schema对象"""
+"""定义处理和管理聊天消息、代理动作、生成结果的数据结构对象"""
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    List,
+    NamedTuple,
+    Optional,
+    Sequence,
+    TypeVar,
+    Union,
+)
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Extra, Field, root_validator
 
 
 def get_buffer_string(
@@ -30,13 +40,8 @@ def get_buffer_string(
 
 
 class BaseMessage(BaseModel):
-    """消息对象"""
-
-    content: str
-    """消息内容"""
-
-    additional_kwargs: dict = Field(default_factory=dict)
-    """用于存储任何额外的关键字参数，默认字典为空"""
+    content: str  # 消息对象
+    additional_kwargs: dict = Field(default_factory=dict)  # 用于存储任何额外的关键字参数，默认字典为空
 
     @property
     @abstractmethod
@@ -45,9 +50,9 @@ class BaseMessage(BaseModel):
 
 
 class HumanMessage(BaseMessage):
-    """人类发出的消息"""
+    """人发送的消息"""
 
-    example: bool = False
+    example: bool = False  # 这个消息是否是一个示例消息
 
     @property
     def type(self) -> str:
@@ -55,9 +60,9 @@ class HumanMessage(BaseMessage):
 
 
 class AIMessage(BaseMessage):
-    """AI发出的消息"""
+    """AI发送的消息"""
 
-    example: bool = False
+    example: bool = False  # 这个消息是否是一个示例消息
 
     @property
     def type(self) -> str:
@@ -65,7 +70,7 @@ class AIMessage(BaseMessage):
 
 
 class SystemMessage(BaseMessage):
-    """系统发出的消息"""
+    """系统发送的消息"""
 
     @property
     def type(self) -> str:
@@ -73,33 +78,61 @@ class SystemMessage(BaseMessage):
 
 
 class ChatMessage(BaseMessage):
-    """任意发言者的消息"""
+    """跟聊天模型相关的一种特殊类型消息，发言者可以是任意角色"""
 
-    role: str
+    role: str  # 发言者角色，比如用户user
 
     @property
     def type(self) -> str:
         return "chat"
 
 
+class AgentAction(NamedTuple):
+    """代理要执行的动作"""
+
+    tool: str  # 表示要使用的工具名称
+    tool_input: Union[str, dict]  # 表示工具的输入
+    log: str  # 用于记录关于这个执行动作的日志信息
+
+
+class AgentFinish(NamedTuple):
+    """代理完成动作后的返回值."""
+
+    return_values: dict  # 返回值，执行完动作后得到的结果
+    log: str  # 记录关于这个完成动作的日志信息
+
+
 class Generation(BaseModel):
-    """一次生成的输出结果."""
+    """表示一次生成的输出结果."""
 
-    text: str
-    """生成的输出文本"""
+    text: str  # 生成的文本
+    generation_info: Optional[Dict[str, Any]] = None  # 包含提供者的原始生成信息，可能包含生成结束的原因等信息
 
-    generation_info: Optional[Dict[str, Any]] = None
-    """包含提供者的原始生成信息，可能包括完成的原因（例如OpenAI）"""
+
+class ChatGeneration(Generation):
+    """表示一次聊天生成的输出结果"""
+
+    text = ""
+    message: BaseMessage
+
+    @root_validator
+    def set_text(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        values["text"] = values["message"].content
+        return values
+
+
+class ChatResult(BaseModel):
+    """包含了所有与聊天结果相关的信息."""
+
+    generations: List[ChatGeneration]  # 一个ChatGeneration对象的列表，表示生成的内容
+    llm_output: Optional[dict] = None  # 存储任意的LLM提供者特定输出
 
 
 class LLMResult(BaseModel):
-    """包含LLM（大型语言模型）结果的所有相关信息"""
+    """包含了所有与LLM结果相关的信息."""
 
-    generations: List[List[Generation]]
-    """一个列表，每个元素也是一个列表，包含了一次或多次生成的Generation对象。这是一个二维列表，因为每个输入可能有多个生成结果。"""
-
-    llm_output: Optional[dict] = None
-    """用于存储特定LLM提供者的输出"""
+    generations: List[List[Generation]]  # 一个列表的列表，每个输入可能有多个生成，表示生成的内容
+    llm_output: Optional[dict] = None  # # 存储任意的LLM提供者特定输出
 
 
 class PromptValue(BaseModel, ABC):
