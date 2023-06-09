@@ -29,17 +29,16 @@ from tenacity import (
 from langchainme.embeddings.base import Embeddings
 from langchainme.utils import get_from_dict_or_env
 
-
 logger = logging.getLogger(__name__)
 
 
 def _create_retry_decorator(embeddings: OpenAIEmbeddings) -> Callable[[Any], Any]:
     from openai.error import (
-        Timeout,
-        APIError,
         APIConnectionError,
+        APIError,
         RateLimitError,
         ServiceUnavailableError,
+        Timeout,
     )
 
     min_seconds = 4

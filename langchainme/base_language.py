@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional, Sequence, Set
 
 from pydantic import BaseModel
-from schema import BaseMessage, LLMResult, PromptValue, get_buffer_string
+from langchainme.schema import BaseMessage, LLMResult, PromptValue, get_buffer_string
 
 from langchainme.callbacks.manager import Callbacks
 
